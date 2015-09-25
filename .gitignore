@@ -1,0 +1,7 @@
+.sass-cache/**
+*.swp
+*.pyc
+*.sassc
+static/fonts/fonts/*
+node_modules/
+__pycache__/
