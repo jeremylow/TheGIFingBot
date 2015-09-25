@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import requests
 import subprocess
@@ -5,7 +7,11 @@ import shlex
 import shutil
 
 # Working with threads
-from queue import Queue
+try:
+    from queue import Queue
+except ImportError:
+    from Queue import Queue
+    
 from threading import Thread
 import multiprocessing
 
@@ -16,16 +22,6 @@ import tweepy
 from imgurpython import ImgurClient
 
 import gb_config as gb_config
-
-auth = tweepy.OAuthHandler(gb_config.CONSUMER_KEY, gb_config.CONSUMER_SECRET)
-auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
-api = tweepy.API(auth)
-
-imgur_client = ImgurClient(
-    gb_config.IMGUR_CLIENT_ID,
-    gb_config.IMGUR_CLIENT_SECRET,
-    gb_config.IMGUR_ACCESS_TOKEN,
-    gb_config.IMGUR_REFRESH_TOKEN)
 
 
 conversion_queue = Queue()
@@ -44,7 +40,7 @@ def save_video(video_url):
             if chunk:
                 video_file.write(chunk)
                 video_file.flush()
-    print("Saved Video File as {}".format(video_name))
+    # print("Saved Video File as {}".format(video_name))
     return video_name
 
 
@@ -62,8 +58,8 @@ def video_to_frames(video_name):
         '{folder}/frames%03d.png'.format(
             video=video_name,
             folder=temp_folder))
-
-    subprocess.call(shlex.split(command))
+    with open(os.devnull) as FNULL:
+        subprocess.call(shlex.split(command), stdout=FNULL, stderr=FNULL)
     return temp_folder
 
 
@@ -71,7 +67,7 @@ def frames_to_gif(folder_name):
     command = "convert -delay 10 -loop 0 {}/frames*.png {}/output.gif".format(
         folder_name,
         folder_name)
-    subprocess.call(shlex.split(command))
+    subprocess.check_output(shlex.split(command))
     gif_path = os.path.realpath("{0}/output.gif".format(folder_name))
     return gif_path
 
@@ -186,10 +182,18 @@ class DMListener(tweepy.StreamListener):
 
 
 def main():
+    imgur_client = ImgurClient(
+        gb_config.IMGUR_CLIENT_ID,
+        gb_config.IMGUR_CLIENT_SECRET,
+        gb_config.IMGUR_ACCESS_TOKEN,
+        gb_config.IMGUR_REFRESH_TOKEN)
+
     auth = tweepy.OAuthHandler(
         gb_config.CONSUMER_KEY,
         gb_config.CONSUMER_SECRET)
     auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
+    api = tweepy.API(auth)
+    
     stream = tweepy.Stream(auth, DMListener())
 
     stream.userstream()
