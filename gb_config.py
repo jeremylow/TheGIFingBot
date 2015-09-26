@@ -8,18 +8,18 @@ MGS = {
     'instructions': 'Instructions are here: http://iseverythingstilltheworst.com/the-gifing-bot/'
 }
 
-CONSUMER_KEY = os.environ["CONSUMER_KEY"]
-CONSUMER_SECRET = os.environ["CONSUMER_SECRET"]
-ACCESS_KEY = os.environ["ACCESS_KEY"]
-ACCESS_SECRET = os.environ["ACCESS_SECRET"]
+CONSUMER_KEY = getattr(os.environ, "CONSUMER_KEY", "test")
+CONSUMER_SECRET = getattr(os.environ, "CONSUMER_SECRET", "test")
+ACCESS_KEY = getattr(os.environ, "ACCESS_KEY", "test")
+ACCESS_SECRET = getattr(os.environ, "ACCESS_SECRET", "test")
 
-IMGUR_CLIENT_ID = os.environ["IMGUR_CLIENT_ID"]
-IMGUR_CLIENT_SECRET = os.environ["IMGUR_CLIENT_SECRET"]
+IMGUR_CLIENT_ID = getattr(os.environ, "IMGUR_CLIENT_ID", "test")
+IMGUR_CLIENT_SECRET = getattr(os.environ, "IMGUR_CLIENT_SECRET", "test")
 
-IMGUR_ACCESS_TOKEN = os.environ["IMGUR_ACCESS_TOKEN"]
-IMGUR_REFRESH_TOKEN = os.environ["IMGUR_REFRESH_TOKEN"]
+IMGUR_ACCESS_TOKEN = getattr(os.environ, "IMGUR_ACCESS_TOKEN", "test")
+IMGUR_REFRESH_TOKEN = getattr(os.environ, "IMGUR_REFRESH_TOKEN", "test")
 
 # Pretty basic for now, but maybe add more info in future.
 IMGUR_UPLOAD_CONFIG = {
-    'album': os.environ["IMGUR_ALBUM"],
+    'album': getattr(os.environ, "IMGUR_ALBUM", "test"),
 }
