@@ -4,8 +4,11 @@ MGS = {
     'unknown': "Something went wrong! I'm a bad bot! Sad face!!!!",
     'no_gif': "I looked and looked and I can't find a GIF!",
     'success': "I AM A GOOD BOT!!!",
-    'help': 'You can ask for help at any time by just DMing the message "help"',
-    'instructions': 'Instructions are here: http://iseverythingstilltheworst.com/the-gifing-bot/'
+    'help': (
+        'You can ask for help at any time by just DMing the message "help"'),
+    'instructions': (
+        'Instructions are here: '
+        'http://iseverythingstilltheworst.com/the-gifing-bot/')
 }
 
 CONSUMER_KEY = os.getenv("CONSUMER_KEY", "test")
