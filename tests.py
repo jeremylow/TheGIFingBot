@@ -2,29 +2,24 @@ import unittest
 import os
 import shutil
 
-from gifing_bot import (
+from gifing_bot_tasks import (
     video_to_frames,
     save_video,
     frames_to_gif,
 )
 
+
 class ConversionTests(unittest.TestCase):
+
     """
     Test all of the video/gif conversion
     functions.
     """
-    # @classmethod
-    # def setUpClass(cls):
-    #     print('setting up')
 
-        
-    # @classmethod
-    # def tearDownClass(cls):
-    #     shutil.rmtree('data/CPwOtkpWUAEZnqm')
-    
     def test_save_video(self):
         video_name = save_video(
-            'https://raw.githubusercontent.com/jeremylow/TheGIFingBot/master/data/CPwOtkpWUAEZnqm.mp4'
+            'https://raw.githubusercontent.com/' +
+            'jeremylow/TheGIFingBot/master/data/CPwOtkpWUAEZnqm.mp4'
         )
         self.assertTrue(os.path.isfile(video_name))
         self.addCleanup(os.remove, video_name)
