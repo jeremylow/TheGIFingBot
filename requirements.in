@@ -1,3 +1,4 @@
 requests
 tweepy
 imgurpython
+celery
