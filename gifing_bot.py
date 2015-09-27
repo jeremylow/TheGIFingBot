@@ -6,24 +6,55 @@ import gb_config as gb_config
 
 from gifing_bot_tasks import (
     send_success_gif,
-    send_error_msg
+    send_error_msg,
 )
 
 
 class DMListener(tweepy.StreamListener):
 
+    def _get_api(self):
+        auth = tweepy.OAuthHandler(
+            gb_config.CONSUMER_KEY,
+            gb_config.CONSUMER_SECRET)
+        auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
+        api = tweepy.API(auth, wait_on_rate_limit=True)
+        return api
+
     def on_connect(self):
+        self.api = self._get_api()
         print('Connected YAY!')
 
     def on_status(self, status):
         pass
+
+    def on_event(self, event):
+        """ Auto follow back """
+
+        # Exclude events that originate with us.
+        if event.source['id_str'] == str(3206731269):
+            return True
+
+        try:
+            if event.event == 'follow':
+                self.api.create_friendship(
+                    user_id=event.source['id_str'])
+
+            # Not sure that this works the way I think it works...
+            elif event.event == 'unfollow':
+                self.api.destroy_friendship(
+                    user_id=event.source['id_str'])
+
+            else:
+                return True
+        except:
+            return True
 
     def on_direct_message(self, status):
         try:
             sender = status.direct_message['sender']['id']
         except:
             print("Could not determine sender")
-            return
+            return True
 
         # Check to see if TheGIFingBot is the sender
         if sender == 3206731269:
@@ -42,7 +73,7 @@ class DMListener(tweepy.StreamListener):
             send_error_msg(sender_id=sender, msg=gb_config.MGS['unknown'])
             return True
 
-        original_tweet = api.get_status(shared_tweet_status_id)._json
+        original_tweet = self.api.get_status(shared_tweet_status_id)._json
 
         # Next check to make sure that the original tweet had a GIF in it.
         # At the moment, it seems you can only attach one GIF. This *should*
