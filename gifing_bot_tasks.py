@@ -7,29 +7,30 @@ from shutil import rmtree
 import random
 from hashlib import sha1
 
+import tweepy
 from imgurpython import ImgurClient
 
-CONSUMER_KEY = os.environ["CONSUMER_KEY"]
-CONSUMER_SECRET = os.environ["CONSUMER_SECRET"]
-ACCESS_KEY = os.environ["ACCESS_KEY"]
-ACCESS_SECRET = os.environ["ACCESS_SECRET"]
+from celery_app import app
 
-IMGUR_CLIENT_ID = os.environ["IMGUR_CLIENT_ID"]
-IMGUR_CLIENT_SECRET = os.environ["IMGUR_CLIENT_SECRET"]
+import gb_config
 
-IMGUR_ACCESS_TOKEN = os.environ["IMGUR_ACCESS_TOKEN"]
-IMGUR_REFRESH_TOKEN = os.environ["IMGUR_REFRESH_TOKEN"]
 
-imgur_client = ImgurClient(
-    IMGUR_CLIENT_ID,
-    IMGUR_CLIENT_SECRET,
-    IMGUR_ACCESS_TOKEN,
-    IMGUR_REFRESH_TOKEN)
+def _get_api():
+    auth = tweepy.OAuthHandler(
+        gb_config.CONSUMER_KEY,
+        gb_config.CONSUMER_SECRET)
+    auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
+    api = tweepy.API(auth, wait_on_rate_limit=True)
+    return api
 
-# Pretty basic for now, but maybe add more info in future.
-IMGUR_UPLOAD_CONFIG = {
-    'album': 'hWz3K',
-}
+
+def _get_imgur_client():
+    imgur_client = ImgurClient(
+        gb_config.IMGUR_CLIENT_ID,
+        gb_config.IMGUR_CLIENT_SECRET,
+        gb_config.IMGUR_ACCESS_TOKEN,
+        gb_config.IMGUR_REFRESH_TOKEN)
+    return imgur_client
 
 
 def random_string(n=15):
@@ -37,6 +38,16 @@ def random_string(n=15):
 
 
 def save_video(video_url):
+    """
+    Saves a video file to the file system.
+
+    Args:
+        video_url (str): URL of the MP4 to save to the file system.
+
+    Returns:
+        Filename (not path) of saved video as a string.
+
+    """
     req = requests.get(video_url, stream=True)
     video_name = "{}.mp4".format(random_string())
     with open(video_name, 'wb') as video_file:
@@ -49,6 +60,18 @@ def save_video(video_url):
 
 
 def video_to_frames(video_name):
+    """
+    Extracts all frames from a video file and saves them to the file system
+    under the folder name of the originally saved file.
+
+    Args:
+        video_name (str): Name of the saved video from which to extract
+        the individual frames.
+
+    Returns:
+        Name of folder into which the frames were saved.
+
+    """
     temp_folder = video_name[:-4]
     if os.path.exists(temp_folder):
         os.rmdir(temp_folder)
@@ -61,6 +84,18 @@ def video_to_frames(video_name):
 
 
 def frames_to_gif(folder_name):
+    """
+    Using imagemagik, bundle, for lack of a better word, all the frames in the
+    specified folder into a GIF.
+
+    Args:
+        folder_name (str): Name of the folder containing all the frames
+        extracted from the original video.
+
+    Returns:
+        Full path of the newly-created GIF on the file system.
+
+    """
     cmd = "convert -delay 10 -loop 0 {0}/frames*.png {1}/output.gif".format(
         folder_name, folder_name)
     subprocess.call(shlex.split(cmd))
@@ -69,9 +104,21 @@ def frames_to_gif(folder_name):
 
 
 def upload_to_imgur(gif):
+    """
+    Upload the new gif to Imgur
+
+    Args:
+        gif (str): path to the GIF file.
+
+    Returns:
+        Response from Imgur, which will contain some information, most
+        importantly the link to the uploaded GIF.
+
+    """
+    imgur_client = _get_imgur_client()
     uploaded_image = imgur_client.upload_from_path(
         gif,
-        config=IMGUR_UPLOAD_CONFIG,
+        config=gb_config.IMGUR_UPLOAD_CONFIG,
         anon=False)
     return uploaded_image
 
@@ -91,6 +138,46 @@ def full_conversion(video_name):
     frames_folder = video_to_frames(saved_video)
     gif_path = frames_to_gif(frames_folder)
     uploaded_image = upload_to_imgur(gif_path)
-    print("I WORKED I AM A GOOD BOT")
     delete_tmp_files_from_system(saved_video, frames_folder)
     return uploaded_image
+
+
+@app.task
+def send_success_gif(sender_id=None, gif=None):
+    """
+    Args:
+        sender_id (int): Twitter ID of the sender of the Direct Message (i.e.,
+            the person that requested the GIF be made).
+        gif (str): URL of the MP4 to be converted to a GIF (this is slightly
+            backwards).
+
+    Returns:
+        True
+
+    """
+    api = _get_api()
+    uploaded_image = full_conversion(gif)
+    text = "I am good bot!! I made you a GIF: {} !".format(
+        uploaded_image['link'])
+    api.send_direct_message(user_id=sender_id, text=text)
+    return True
+
+
+@app.task
+def send_error_msg(sender_id=None, msg=None):
+    """
+    Args:
+        sender_id (int): Twitter ID of the sender of the Direct Message (i.e.,
+            the person that requested the GIF be made).
+        msg (str): Direct Message to send back to the requestor explaining(ish)
+            what went wrong.
+
+    Returns:
+        True
+
+    """
+    api = _get_api()
+    api.send_direct_message(
+        user_id=sender_id,
+        text=msg)
+    return True
