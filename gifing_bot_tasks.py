@@ -122,7 +122,6 @@ def upload_to_imgur(gif):
             gif,
             config=gb_config.IMGUR_UPLOAD_CONFIG,
             anon=False)
-        import pdb; pdb.set_trace()
     except ImgurClientError as e:
         print(e)
     return uploaded_image
