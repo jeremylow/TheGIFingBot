@@ -4,10 +4,10 @@
 NAME="the_gifing_bot"
 
 # Project directory (contains the actual application that we're going to run)
-SERVERDIR=/home/jeremy/coding/TheGIFingBot
+SERVERDIR=/home/jeremy/servers/TheGIFingBot/
 
 # Virtual environment directory
-VENVDIR=/home/jeremy/Envs/gifingbot
+VENVDIR=/home/jeremy/Envs/the_gifing_bot
 
 # the user and group the program should run as
 USER=jeremy
@@ -23,4 +23,4 @@ export PYTHONPATH=$SERVERDIR:$PYTHONPATH
 # (do not use --daemon). So we'll cd to our server directory and then
 # execute the program using the virtualenv's version of python.
 cd $SERVERDIR
-exec $VENVDIR/bin/python $SERVERDIR/gifing_bot.py
+exec $VENVDIR/bin/python gifing_bot.py
