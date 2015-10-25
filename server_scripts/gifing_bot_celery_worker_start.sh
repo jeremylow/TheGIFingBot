@@ -28,4 +28,4 @@ export PYTHONPATH=$SERVERDIR:$PYTHONPATH
 # execute the program using the virtualenv's version of python.
 cd $SERVERDIR
 
-exec celery -A celery_config worker -l DEBUG
+exec celery -A celery_app worker -Q gifing_bot -l DEBUG

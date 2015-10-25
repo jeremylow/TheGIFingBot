@@ -84,7 +84,10 @@ class DMListener(tweepy.StreamListener):
         # take care of the possibility that you can attach more later.
         gifs = []
         if 'extended_entities' not in original_tweet.keys():
-            send_error_msg.delay(sender_id=sender, msg=gb_config.MGS['no_gif'])
+            send_error_msg.apply_async(
+                args=[sender, gb_config.MGS['no_gif']],
+                queue='gifing_bot',
+                routing_key='gifing_bot')
             return True
 
         else:
@@ -103,12 +106,18 @@ class DMListener(tweepy.StreamListener):
                     gifs.append(video['url'])
 
         if not gifs:
-            send_error_msg.delay(sender_id=sender, msg=gb_config.MGS['no_gif'])
+            send_error_msg.apply_async(
+                args=[sender, gb_config.MGS['no_gif']],
+                queue='gifing_bot',
+                routing_key='gifing_bot')
             return True
 
         # Yay, we're actually doing this!
         for gif in gifs:
-            send_success_gif.delay(sender_id=sender, gif=gif)
+            send_success_gif.apply_async(
+                args=[sender, gif],
+                queue='gifing_bot',
+                routing_key='gifing_bot')
         return True
 
 
