@@ -9,6 +9,7 @@ from hashlib import sha1
 
 import tweepy
 from imgurpython import ImgurClient
+from imgurpython.client import ImgurClientError
 
 from celery_app import app
 
@@ -116,10 +117,14 @@ def upload_to_imgur(gif):
 
     """
     imgur_client = _get_imgur_client()
-    uploaded_image = imgur_client.upload_from_path(
-        gif,
-        config=gb_config.IMGUR_UPLOAD_CONFIG,
-        anon=False)
+    try:
+        uploaded_image = imgur_client.upload_from_path(
+            gif,
+            config=gb_config.IMGUR_UPLOAD_CONFIG,
+            anon=False)
+        import pdb; pdb.set_trace()
+    except ImgurClientError as e:
+        print(e)
     return uploaded_image
 
 

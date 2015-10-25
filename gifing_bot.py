@@ -39,10 +39,13 @@ class DMListener(tweepy.StreamListener):
                 self.api.create_friendship(
                     user_id=event.source['id_str'])
 
-            # Not sure that this works the way I think it works...
-            elif event.event == 'unfollow':
-                self.api.destroy_friendship(
-                    user_id=event.source['id_str'])
+            # Not sure that this works the way I think it works... Yeah, it
+            # doesn't. Twitter doesn't have an unfollow event. Saved here for
+            # posterity.
+
+            # elif event.event == 'unfollow':
+            #     self.api.destroy_friendship(
+            #         user_id=event.source['id_str'])
 
             else:
                 return True
@@ -56,7 +59,8 @@ class DMListener(tweepy.StreamListener):
             print("Could not determine sender")
             return True
 
-        # Check to see if TheGIFingBot is the sender
+        # Check to see if TheGIFingBot is the sender. If so, pass & don't do
+        # anything.
         if sender == 3206731269:
             return True
         dm = status._json
