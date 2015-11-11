@@ -27,3 +27,5 @@ IMGUR_REFRESH_TOKEN = os.getenv("GB_IMGUR_REFRESH_TOKEN", "test")
 IMGUR_UPLOAD_CONFIG = {
     'album': os.getenv("GB_IMGUR_ALBUM", "test"),
 }
+
+SLACK_URL = os.getenv("GB_SLACK_URL", "test")

@@ -8,8 +8,6 @@ import json
 import random
 import requests
 import subprocess
-import shlex
-from shutil import rmtree
 
 
 import tweepy
