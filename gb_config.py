@@ -8,7 +8,8 @@ MGS = {
         'You can ask for help at any time by just DMing the message "help"'),
     'instructions': (
         'Instructions are here: '
-        'http://iseverythingstilltheworst.com/the-gifing-bot/')
+        'http://iseverythingstilltheworst.com/the-gifing-bot/'),
+    'ImgurError': 'I had a problem uploading your GIF to Imgur! It might be too big. I\'m sorry :( :('
 }
 
 CONSUMER_KEY = os.getenv("GB_CONSUMER_KEY", "test")

@@ -1,11 +1,16 @@
+from __future__ import print_function
+
 import os
+from os.path import abspath, basename, dirname, splitext
+
+from hashlib import sha1
+import json
+import random
 import requests
 import subprocess
 import shlex
 from shutil import rmtree
 
-import random
-from hashlib import sha1
 
 import tweepy
 from imgurpython import ImgurClient
@@ -14,6 +19,16 @@ from imgurpython.client import ImgurClientError
 from celery_app import app
 
 import gb_config
+
+BASE_DIR = dirname(abspath(__file__))
+
+
+def post_slack(msg):
+    payload = {'text': msg}
+    requests.post(
+        gb_config.SLACK_URL,
+        json.dumps(payload),
+        headers={'content-type': 'application/json'})
 
 
 def _get_api():
@@ -50,41 +65,17 @@ def save_video(video_url):
 
     """
     req = requests.get(video_url, stream=True)
-    video_name = "{}.mp4".format(random_string())
+    video_name = "{0}.mp4".format(random_string())
     with open(video_name, 'wb') as video_file:
         for chunk in req.iter_content(chunk_size=1024):
             if chunk:
                 video_file.write(chunk)
                 video_file.flush()
-    print("Saved Video File as {}".format(video_name))
+    print("Saved Video File as {0}".format(video_name))
     return video_name
 
 
-def video_to_frames(video_name):
-    """
-    Extracts all frames from a video file and saves them to the file system
-    under the folder name of the originally saved file.
-
-    Args:
-        video_name (str): Name of the saved video from which to extract
-        the individual frames.
-
-    Returns:
-        Name of folder into which the frames were saved.
-
-    """
-    temp_folder = video_name[:-4]
-    if os.path.exists(temp_folder):
-        os.rmdir(temp_folder)
-    os.mkdir(temp_folder)
-    cmd = 'ffmpeg -i {v} -vf scale="500:-1" -r 10  {f}/frames%03d.png'.format(
-        v=video_name,
-        f=temp_folder)
-    subprocess.call(shlex.split(cmd))
-    return temp_folder
-
-
-def frames_to_gif(folder_name):
+def frames_to_gif(mp4):
     """
     Using imagemagik, bundle, for lack of a better word, all the frames in the
     specified folder into a GIF.
@@ -97,10 +88,12 @@ def frames_to_gif(folder_name):
         Full path of the newly-created GIF on the file system.
 
     """
-    cmd = "convert -delay 10 -loop 0 {0}/frames*.png {1}/output.gif".format(
-        folder_name, folder_name)
-    subprocess.call(shlex.split(cmd))
-    gif_path = os.path.realpath("{0}/output.gif".format(folder_name))
+    gif = splitext(basename(mp4))[0] + '.gif'
+
+    cmd = "{0}/mp4_to_gif.sh {1} {2}".format(BASE_DIR, mp4, gif)
+    subprocess.call(cmd, shell=True)
+
+    gif_path = os.path.realpath(gif)
     return gif_path
 
 
@@ -117,32 +110,30 @@ def upload_to_imgur(gif):
 
     """
     imgur_client = _get_imgur_client()
-    try:
-        uploaded_image = imgur_client.upload_from_path(
-            gif,
-            config=gb_config.IMGUR_UPLOAD_CONFIG,
-            anon=False)
-    except ImgurClientError as e:
-        print(e)
+    uploaded_image = imgur_client.upload_from_path(
+        gif,
+        config=gb_config.IMGUR_UPLOAD_CONFIG,
+        anon=False)
     return uploaded_image
 
 
-def delete_tmp_files_from_system(video, frames_folder):
+def delete_tmp_files_from_system(video, gif):
     try:
         os.remove(video)
-        rmtree(frames_folder)
-        print("Something went right, files deleted")
+        os.remove(gif)
     except:
-        print("Something went wrong, files not deleted")
+        post_slack('Some files were not deleted: video: {}, gif: {}'.format(
+            video,
+            gif))
     return
 
 
 def full_conversion(video_name):
     saved_video = save_video(video_name)
-    frames_folder = video_to_frames(saved_video)
-    gif_path = frames_to_gif(frames_folder)
+    gif_path = frames_to_gif(saved_video)
+
     uploaded_image = upload_to_imgur(gif_path)
-    delete_tmp_files_from_system(saved_video, frames_folder)
+    delete_tmp_files_from_system(saved_video, gif_path)
     return uploaded_image
 
 
@@ -159,11 +150,29 @@ def send_success_gif(sender_id=None, gif=None):
         True
 
     """
+    post_slack("Making a GIF!")
     api = _get_api()
+
+    saved_video = save_video(gif)
+    gif_path = frames_to_gif(saved_video)
+
+    try:
+        uploaded_image = upload_to_imgur(gif_path)
+    except ImgurClientError as e:
+        send_error_msg.apply_async(
+            args=[sender_id, gb_config.MGS['ImgurError']],
+            queue='gifing_bot',
+            routing_key='gifing_bot')
+        post_slack(e)
+
     uploaded_image = full_conversion(gif)
-    text = "I am good bot!! I made you a GIF: {} !".format(
+    text = "I am good bot!! I made you a GIF: {0} !".format(
         uploaded_image['link'])
     api.send_direct_message(user_id=sender_id, text=text)
+    post_slack("I made a GIF!!!")
+
+    delete_tmp_files_from_system(saved_video, gif_path)
+
     return True
 
 
@@ -184,4 +193,7 @@ def send_error_msg(sender_id=None, msg=None):
     api.send_direct_message(
         user_id=sender_id,
         text=msg)
+    post_slack('Encountered an error:\n{0}\n{1}'.format(
+        sender_id,
+        msg))
     return True

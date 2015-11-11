@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import datetime
+import json
+import requests
+
 import tweepy
 
 import gb_config as gb_config
@@ -8,6 +12,18 @@ from gifing_bot_tasks import (
     send_success_gif,
     send_error_msg,
 )
+
+
+def now():
+    return datetime.datetime.utcnow().isoformat()
+
+
+def post_slack(msg):
+    payload = {'text': msg}
+    requests.post(
+        gb_config.SLACK_URL,
+        json.dumps(payload),
+        headers={'content-type': 'application/json'})
 
 
 class DMListener(tweepy.StreamListener):
@@ -114,14 +130,22 @@ class DMListener(tweepy.StreamListener):
 
         # Yay, we're actually doing this!
         for gif in gifs:
-            send_success_gif.apply_async(
-                args=[sender, gif],
-                queue='gifing_bot',
-                routing_key='gifing_bot')
+            try:
+                send_success_gif.apply_async(
+                    args=[sender, gif],
+                    queue='gifing_bot',
+                    routing_key='gifing_bot')
+            except Exception as e:
+                post_slack(msg=e)
+                send_error_msg.apply_async(
+                    args=[sender, gb_config.MGS['unknown']],
+                    queue='gifing_bot',
+                    routing_key='gifing_bot')
         return True
 
 
 def main():
+    post_slack(msg="Connected!")
     auth = tweepy.OAuthHandler(
         gb_config.CONSUMER_KEY,
         gb_config.CONSUMER_SECRET)
