@@ -82,7 +82,6 @@ class DMListener(tweepy.StreamListener):
             return True
 
     def on_direct_message(self, status):
-        import pdb; pdb.set_trace()
         try:
             sender = status.direct_message['sender']['id']
         except Exception as e:
