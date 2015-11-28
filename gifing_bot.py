@@ -100,7 +100,7 @@ class DMListener(tweepy.StreamListener):
             match = re.search('status\/(\d+)', shared_tweet)
             if match:
                 shared_id = match.groups()[0]
-        except KeyError as e:
+        except Exception as e:
             logger.debug("{0}: Key error. {1}".format(now(), e))
             send_error_msg(sender_id=sender, msg=keys.MGS['unknown'])
             return True
