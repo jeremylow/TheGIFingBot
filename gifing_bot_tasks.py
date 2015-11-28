@@ -1,14 +1,15 @@
 from __future__ import print_function
 
 import os
-from os.path import abspath, basename, dirname, splitext
-
+from os.path import abspath, basename, dirname, splitext, join
+import datetime
 from hashlib import sha1
 import json
+import logging
+import logging.handlers
 import random
 import requests
 import subprocess
-
 
 import tweepy
 from imgurpython import ImgurClient
@@ -16,34 +17,51 @@ from imgurpython.client import ImgurClientError
 
 from celery_app import app
 
-import gb_config
+import keys
 
 BASE_DIR = dirname(abspath(__file__))
+LOGFILE = join(BASE_DIR, 'GifingBot.log')
+
+
+def now():
+    return datetime.datetime.utcnow().isoformat()
+
+logger = logging.getLogger('GifingBot')
+logger.setLevel(logging.DEBUG)
+handler = logging.handlers.RotatingFileHandler(
+    LOGFILE,
+    maxBytes=1024*1024,
+    backupCount=5)
+logger.addHandler(handler)
+logger.debug("{0}: Initialized Gifing Bot".format(now()))
 
 
 def post_slack(msg):
     payload = {'text': msg}
-    requests.post(
-        gb_config.SLACK_URL,
-        json.dumps(payload),
-        headers={'content-type': 'application/json'})
+    try:
+        requests.post(
+            keys.SLACK_URL,
+            json.dumps(payload),
+            headers={'content-type': 'application/json'})
+    except:
+        return True
 
 
 def _get_api():
     auth = tweepy.OAuthHandler(
-        gb_config.CONSUMER_KEY,
-        gb_config.CONSUMER_SECRET)
-    auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
+        keys.CONSUMER_KEY,
+        keys.CONSUMER_SECRET)
+    auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
     api = tweepy.API(auth, wait_on_rate_limit=True)
     return api
 
 
 def _get_imgur_client():
     imgur_client = ImgurClient(
-        gb_config.IMGUR_CLIENT_ID,
-        gb_config.IMGUR_CLIENT_SECRET,
-        gb_config.IMGUR_ACCESS_TOKEN,
-        gb_config.IMGUR_REFRESH_TOKEN)
+        keys.IMGUR_CLIENT_ID,
+        keys.IMGUR_CLIENT_SECRET,
+        keys.IMGUR_ACCESS_TOKEN,
+        keys.IMGUR_REFRESH_TOKEN)
     return imgur_client
 
 
@@ -110,7 +128,7 @@ def upload_to_imgur(gif):
     imgur_client = _get_imgur_client()
     uploaded_image = imgur_client.upload_from_path(
         gif,
-        config=gb_config.IMGUR_UPLOAD_CONFIG,
+        config=keys.IMGUR_UPLOAD_CONFIG,
         anon=False)
     return uploaded_image
 
@@ -158,7 +176,7 @@ def send_success_gif(sender_id=None, gif=None):
         uploaded_image = upload_to_imgur(gif_path)
     except ImgurClientError as e:
         send_error_msg.apply_async(
-            args=[sender_id, gb_config.MGS['ImgurError']],
+            args=[sender_id, keys.MGS['ImgurError']],
             queue='gifing_bot',
             routing_key='gifing_bot')
         post_slack(e)

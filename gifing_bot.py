@@ -2,37 +2,56 @@ from __future__ import print_function
 
 import datetime
 import json
+import logging
+import logging.handlers
+from os.path import abspath, dirname, join
+import re
 import requests
 
 import tweepy
 
-import gb_config as gb_config
+import keys
 
 from gifing_bot_tasks import (
     send_success_gif,
     send_error_msg,
 )
 
+BASE_DIR = dirname(abspath(__file__))
+LOGFILE = join(BASE_DIR, 'GifingBot.log')
+
 
 def now():
     return datetime.datetime.utcnow().isoformat()
 
+logger = logging.getLogger('GifingBot')
+logger.setLevel(logging.DEBUG)
+handler = logging.handlers.RotatingFileHandler(
+    LOGFILE,
+    maxBytes=1024*1024,
+    backupCount=5)
+logger.addHandler(handler)
+logger.debug("{0}: Initialized Gifing Bot".format(now()))
+
 
 def post_slack(msg):
     payload = {'text': msg}
-    requests.post(
-        gb_config.SLACK_URL,
-        json.dumps(payload),
-        headers={'content-type': 'application/json'})
+    try:
+        requests.post(
+            keys.SLACK_URL,
+            json.dumps(payload),
+            headers={'content-type': 'application/json'})
+    except Exception as e:
+        logger.debug(e)
 
 
 class DMListener(tweepy.StreamListener):
 
     def _get_api(self):
         auth = tweepy.OAuthHandler(
-            gb_config.CONSUMER_KEY,
-            gb_config.CONSUMER_SECRET)
-        auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
+            keys.CONSUMER_KEY,
+            keys.CONSUMER_SECRET)
+        auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
         api = tweepy.API(auth, wait_on_rate_limit=True)
         return api
 
@@ -54,25 +73,20 @@ class DMListener(tweepy.StreamListener):
             if event.event == 'follow':
                 self.api.create_friendship(
                     user_id=event.source['id_str'])
-
-            # Not sure that this works the way I think it works... Yeah, it
-            # doesn't. Twitter doesn't have an unfollow event. Saved here for
-            # posterity.
-
-            # elif event.event == 'unfollow':
-            #     self.api.destroy_friendship(
-            #         user_id=event.source['id_str'])
-
+                logger.debug("{0}: Followed {1}".format(
+                    now(),
+                    event.source['id_str']))
             else:
                 return True
         except:
             return True
 
     def on_direct_message(self, status):
+        import pdb; pdb.set_trace()
         try:
             sender = status.direct_message['sender']['id']
-        except:
-            print("Could not determine sender")
+        except Exception as e:
+            logger.debug("{0}: Couldn't find sender. {1}".format(now(), e))
             return True
 
         # Check to see if TheGIFingBot is the sender. If so, pass & don't do
@@ -83,34 +97,43 @@ class DMListener(tweepy.StreamListener):
 
         # Check to make sure there's an attached tweet.
         try:
-            shared_tweet = dm[
-                'direct_message']['entities']['urls'][0]['expanded_url']
-            shared_tweet_status_id = shared_tweet.split('/')[-1]
-
-        except Exception as e:
-            print(e)
-            # Send back a DM that something went wrong.
-            send_error_msg(sender_id=sender, msg=gb_config.MGS['unknown'])
+            shared_tweet = dm['direct_message']['entities']['urls'][0]['expanded_url']
+            match = re.search('status\/(\d+)', shared_tweet)
+            if match:
+                shared_id = match.groups()[0]
+        except KeyError as e:
+            logger.debug("{0}: Key error. {1}".format(now(), e))
+            send_error_msg(sender_id=sender, msg=keys.MGS['unknown'])
             return True
 
-        original_tweet = self.api.get_status(shared_tweet_status_id)._json
+        if shared_id:
+            original_tweet = self.api.get_status(shared_id)._json
+        else:
+            return True
 
         # Next check to make sure that the original tweet had a GIF in it.
         # At the moment, it seems you can only attach one GIF. This *should*
         # take care of the possibility that you can attach more later.
         gifs = []
-        if 'extended_entities' not in original_tweet.keys():
+
+        extended_entities = original_tweet.get('extended_entities', None)
+
+        if not extended_entities:
+            logger.debug("{0}: Key error. {1}".format(
+                now(),
+                'could not find extended_entities')
+            )
             send_error_msg.apply_async(
-                args=[sender, gb_config.MGS['no_gif']],
+                args=[sender, keys.MGS['no_gif']],
                 queue='gifing_bot',
                 routing_key='gifing_bot')
             return True
 
         else:
-            for media in original_tweet['extended_entities']['media']:
-                if media['type'] == 'animated_gif':
+            for media in extended_entities['media']:
+                if media.get('type') == 'animated_gif':
                     gifs.append(media['video_info']['variants'][0]['url'])
-                elif media['type'] == 'video':
+                elif media.get('type') == 'video':
                     variants = media['video_info']['variants']
                     videos = []
                     for variant in variants:
@@ -123,7 +146,7 @@ class DMListener(tweepy.StreamListener):
 
         if not gifs:
             send_error_msg.apply_async(
-                args=[sender, gb_config.MGS['no_gif']],
+                args=[sender, keys.MGS['no_gif']],
                 queue='gifing_bot',
                 routing_key='gifing_bot')
             return True
@@ -138,7 +161,7 @@ class DMListener(tweepy.StreamListener):
             except Exception as e:
                 post_slack(msg=e)
                 send_error_msg.apply_async(
-                    args=[sender, gb_config.MGS['unknown']],
+                    args=[sender, keys.MGS['unknown']],
                     queue='gifing_bot',
                     routing_key='gifing_bot')
         return True
@@ -147,10 +170,9 @@ class DMListener(tweepy.StreamListener):
 def main():
     post_slack(msg="Connected!")
     auth = tweepy.OAuthHandler(
-        gb_config.CONSUMER_KEY,
-        gb_config.CONSUMER_SECRET)
-    auth.set_access_token(gb_config.ACCESS_KEY, gb_config.ACCESS_SECRET)
-    api = tweepy.API(auth)
+        keys.CONSUMER_KEY,
+        keys.CONSUMER_SECRET)
+    auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
 
     stream = tweepy.Stream(auth, DMListener())
     stream.userstream()

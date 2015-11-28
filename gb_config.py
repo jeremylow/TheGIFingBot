@@ -28,4 +28,4 @@ IMGUR_UPLOAD_CONFIG = {
     'album': os.getenv("GB_IMGUR_ALBUM", "test"),
 }
 
-SLACK_URL = os.getenv("GB_SLACK_URL", "test")
+SLACK_URL = os.getenv("GB_SLACK_URL", "http://example.com/")
