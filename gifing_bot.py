@@ -4,7 +4,7 @@ import datetime
 import json
 import logging
 import logging.handlers
-from os.path import abspath, dirname, join
+import os
 import re
 import requests
 
@@ -17,8 +17,11 @@ from gifing_bot_tasks import (
     send_error_msg,
 )
 
-BASE_DIR = dirname(abspath(__file__))
-LOGFILE = join(BASE_DIR, 'GifingBot.log')
+with open('bot_supervisord.pid', 'w') as pidfile:
+    pidfile.write(str(os.getpid()))
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGFILE = os.path.join(BASE_DIR, 'GifingBot.log')
 
 
 def now():

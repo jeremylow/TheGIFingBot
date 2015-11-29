@@ -22,6 +22,9 @@ import keys
 BASE_DIR = dirname(abspath(__file__))
 LOGFILE = join(BASE_DIR, 'GifingBot.log')
 
+with open('bot_worker.pid', 'w') as pidfile:
+    pidfile.write(str(os.getpid()))
+
 
 def now():
     return datetime.datetime.utcnow().isoformat()
