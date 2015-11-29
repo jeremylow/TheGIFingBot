@@ -26,10 +26,9 @@ def now():
 
 logger = logging.getLogger('GifingBot')
 logger.setLevel(logging.DEBUG)
-handler = logging.handlers.RotatingFileHandler(
-    LOGFILE,
-    maxBytes=1024*1024,
-    backupCount=5)
+handler = logging.handlers.RotatingFileHandler(LOGFILE,
+                                               maxBytes=1048576,
+                                               backupCount=5)
 logger.addHandler(handler)
 logger.debug("{0}: Initialized Gifing Bot".format(now()))
 
@@ -42,7 +41,7 @@ def post_slack(msg):
             json.dumps(payload),
             headers={'content-type': 'application/json'})
     except Exception as e:
-        logger.debug(e)
+        logger.debug("{0}: {1}".format(now(), e))
 
 
 class DMListener(tweepy.StreamListener):
@@ -71,11 +70,9 @@ class DMListener(tweepy.StreamListener):
 
         try:
             if event.event == 'follow':
-                self.api.create_friendship(
-                    user_id=event.source['id_str'])
-                logger.debug("{0}: Followed {1}".format(
-                    now(),
-                    event.source['id_str']))
+                follower = event.source['id_str']
+                self.api.create_friendship(user_id=follower)
+                logger.debug("{0}: Followed {1}".format(now(), follower))
             else:
                 return True
         except:
@@ -94,7 +91,9 @@ class DMListener(tweepy.StreamListener):
             return True
         dm = status._json
 
-        # Check to make sure there's an attached tweet.
+        # Check to make sure there's an attached tweet. The regex looks for
+        # text along the lines of status/12437385203, which should be the
+        # linked tweet.
         try:
             shared_tweet = dm['direct_message']['entities']['urls'][0]['expanded_url']
             match = re.search('status\/(\d+)', shared_tweet)
@@ -118,16 +117,12 @@ class DMListener(tweepy.StreamListener):
         extended_entities = original_tweet.get('extended_entities', None)
 
         if not extended_entities:
-            logger.debug("{0}: Key error. {1}".format(
-                now(),
-                'could not find extended_entities')
-            )
+            logger.debug("{0}: Could not find extended_entities".format(now()))
             send_error_msg.apply_async(
                 args=[sender, keys.MGS['no_gif']],
                 queue='gifing_bot',
                 routing_key='gifing_bot')
             return True
-
         else:
             for media in extended_entities['media']:
                 if media.get('type') == 'animated_gif':

@@ -93,7 +93,7 @@ def save_video(video_url):
 
 def frames_to_gif(mp4):
     """
-    Using imagemagik, bundle, for lack of a better word, all the frames in the
+    Using ffmpeg, bundle, for lack of a better word, all the frames in the
     specified folder into a GIF.
 
     Args:

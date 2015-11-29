@@ -4,7 +4,7 @@
 NAME="the_gifing_bot_celery_worker"
 
 # Project directory (contains the actual application that we're going to run)
-SERVERDIR=/home/jeremy/servers/TheGIFingBot/
+SERVERDIR=/home/jeremy/apps/TheGIFingBot/
 
 # Virtual environment directory
 VENVDIR=/home/jeremy/Envs/the_gifing_bot
