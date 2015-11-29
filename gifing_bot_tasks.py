@@ -177,21 +177,18 @@ def send_success_gif(sender_id=None, gif=None):
 
     try:
         uploaded_image = upload_to_imgur(gif_path)
+        text = "I am good bot!! I made you a GIF: {0} !".format(
+            uploaded_image['link'])
+        api.send_direct_message(user_id=sender_id, text=text)
+        post_slack("I made a GIF!!!")
+
+        delete_tmp_files_from_system(saved_video, gif_path)
     except ImgurClientError as e:
         send_error_msg.apply_async(
             args=[sender_id, keys.MGS['ImgurError']],
             queue='gifing_bot',
             routing_key='gifing_bot')
         post_slack(e)
-
-    uploaded_image = full_conversion(gif)
-    text = "I am good bot!! I made you a GIF: {0} !".format(
-        uploaded_image['link'])
-    api.send_direct_message(user_id=sender_id, text=text)
-    post_slack("I made a GIF!!!")
-
-    delete_tmp_files_from_system(saved_video, gif_path)
-
     return True
 
 
