@@ -22,3 +22,7 @@ lowres/**
 config.py
 *.log*
 keys.py
+bot_supervisord.pid
+bot_worker.pid
+*.mp4
+*.gif
