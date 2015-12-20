@@ -4,15 +4,17 @@
 #
 #    pip-compile requirements.in
 #
-amqp==1.4.6               # via kombu
+amqp==1.4.8               # via kombu
 anyjson==0.3.3            # via kombu
-billiard==3.3.0.20        # via celery
-celery==3.1.18
+billiard==3.3.0.22        # via celery
+celery==3.1.19
 imgurpython==1.1.6
-kombu==3.0.26             # via celery
-oauthlib==1.0.3           # via requests-oauthlib
-pytz==2015.6              # via celery
-requests-oauthlib==0.5.0  # via tweepy
-requests==2.7.0
-six==1.9.0                # via tweepy
-tweepy==3.4.0
+kombu==3.0.32             # via celery
+oauthlib==1.0.3           # via pyshk, requests-oauthlib
+pyshk==1.1.0
+pytz==2015.7              # via celery
+requests-oauthlib==0.6.0  # via pyshk, tweepy
+requests-toolbelt==0.5.1  # via pyshk
+requests==2.9.0
+six==1.10.0               # via pyshk, tweepy
+tweepy==3.5.0
