@@ -182,7 +182,7 @@ class DMListener(tweepy.StreamListener):
         """ Auto follow back """
 
         # Exclude events that originate with us.
-        if event.source['id_str'] == str(4012966701):
+        if event.source['id_str'] == str(4012966701) or event.source['id_str'] == str(3206731269):
             return True
 
         try:
@@ -205,7 +205,7 @@ class DMListener(tweepy.StreamListener):
         # Check to see if TheGIFingBot is the sender. If so, pass & don't do
         # anything.
         print(sender)
-        if sender == 4012966701:
+        if sender == 4012966701 or sender == 3206731269:
             return True
         dm = status._json
         print(dm)
