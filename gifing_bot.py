@@ -1,31 +1,28 @@
 from __future__ import print_function
 
-import datetime
-import json
 import logging
 import logging.handlers
-import os
+from os import getpid, remove
+from os.path import abspath, basename, dirname, splitext, join, realpath
 import re
-import requests
+import subprocess
 
+import requests
 import tweepy
+from pyshk.api import Api
 
 import keys
 
-from gifing_bot_tasks import (
-    send_success_gif,
-    send_error_msg,
-)
+from utils import (
+    now,
+    post_slack,
+    random_string)
 
 with open('bot_supervisord.pid', 'w') as pidfile:
-    pidfile.write(str(os.getpid()))
+    pidfile.write(str(getpid()))
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGFILE = os.path.join(BASE_DIR, 'GifingBot.log')
-
-
-def now():
-    return datetime.datetime.utcnow().isoformat()
+BASE_DIR = dirname(abspath(__file__))
+LOGFILE = join(BASE_DIR, 'GifingBot.log')
 
 logger = logging.getLogger('GifingBot')
 logger.setLevel(logging.DEBUG)
@@ -36,20 +33,10 @@ logger.addHandler(handler)
 logger.debug("{0}: Initialized Gifing Bot".format(now()))
 
 
-def post_slack(msg):
-    payload = {'text': msg}
-    try:
-        requests.post(
-            keys.SLACK_URL,
-            json.dumps(payload),
-            headers={'content-type': 'application/json'})
-    except Exception as e:
-        logger.debug("{0}: {1}".format(now(), e))
-
-
 class DMListener(tweepy.StreamListener):
 
-    def _get_api(self):
+    @staticmethod
+    def _get_api():
         auth = tweepy.OAuthHandler(
             keys.CONSUMER_KEY,
             keys.CONSUMER_SECRET)
@@ -57,8 +44,135 @@ class DMListener(tweepy.StreamListener):
         api = tweepy.API(auth, wait_on_rate_limit=True)
         return api
 
+    @staticmethod
+    def _get_mlkshk_api():
+        mlkshk_api = Api(
+            keys.MLKSHK_CLIENT_KEY,
+            keys.MLKSHK_CLIENT_SECRET,
+            keys.MLKSHK_ACCESS_TOKEN,
+            keys.MLKSHK_ACCESS_SECRET)
+        return mlkshk_api
+
+    @staticmethod
+    def save_video(video_url):
+            """
+            Saves a video file to the file system.
+
+            Args:
+                video_url (str): URL of the MP4 to save to the file system.
+
+            Returns:
+                Filename (not path) of saved video as a string.
+            """
+
+            req = requests.get(video_url, stream=True)
+            video_name = "{0}.mp4".format(random_string())
+            with open(video_name, 'wb') as video_file:
+                for chunk in req.iter_content(chunk_size=1024):
+                    if chunk:
+                        video_file.write(chunk)
+                        video_file.flush()
+            return video_name
+
+    @staticmethod
+    def frames_to_gif(mp4):
+        """
+        Using ffmpeg, bundle, for lack of a better word, all the frames in the
+        specified folder into a GIF.
+
+        Args:
+            folder_name (str): Name of the folder containing all the frames
+            extracted from the original video.
+
+        Returns:
+            Full path of the newly-created GIF on the file system.
+        """
+
+        gif = splitext(basename(mp4))[0] + '.gif'
+
+        cmd = "{0}/mp4_to_gif.sh {1} {2}".format(BASE_DIR, mp4, gif)
+        subprocess.call(cmd, shell=True)
+
+        gif_path = realpath(gif)
+        return gif_path
+
+    @staticmethod
+    def delete_tmp_files_from_system(video, gif):
+        try:
+            remove(video)
+            remove(gif)
+        except:
+            post_slack('Files not deleted: video: {0}, gif: {1}'.format(video, gif))
+        return False
+
+    def upload_gif(self, gif):
+        """
+        Upload the new gif to Imgur
+
+        Args:
+            gif (str): path to the GIF file.
+
+        Returns:
+            Response from Imgur, which will contain some information, most
+            importantly the link to the uploaded GIF.
+
+        """
+        try:
+            uploaded_image = self.mlkshk_api.post_shared_file(image_file=gif)
+            gif_url = "{0}/p/{1}".format(
+                "https://mlkshk.com",
+                uploaded_image['share_key'])
+        except Exception as e:
+            post_slack("{0} Error: {1}".format(now(), e))
+        return gif_url
+
+    def send_error_msg(self, sender_id=None, msg=None):
+        """
+        Args:
+            sender_id (int): Twitter ID of the sender of the Direct Message (i.e.,
+                the person that requested the GIF be made).
+            msg (str): Direct Message to send back to the requestor explaining(ish)
+                what went wrong.
+
+        Returns:
+            True
+
+        """
+        self.api.send_direct_message(user_id=sender_id, text=msg)
+        post_slack('Encountered an error:\n{0}\n{1}'.format(sender_id, msg))
+        return True
+
+    def send_success_gif(self, sender_id=None, gif=None):
+        """
+        Args:
+            sender_id (int): Twitter ID of the sender of the Direct Message
+                (the person that requested the GIF be made).
+            gif (str): URL of the MP4 to be converted to a GIF (this is slightly
+                backwards).
+
+        Returns:
+            True
+
+        """
+        post_slack("Making a GIF!")
+
+        saved_video = self.save_video(gif)
+        gif_path = self.frames_to_gif(saved_video)
+
+        try:
+            uploaded_image = self.upload_gif(gif_path)
+            text = "I am good bot!! I made you a GIF: {0} !".format(uploaded_image)
+
+            self.api.send_direct_message(user_id=sender_id, text=text)
+            self.delete_tmp_files_from_system(saved_video, gif_path)
+
+        except Exception as e:
+            post_slack(e)
+        return True
+
     def on_connect(self):
         self.api = self._get_api()
+        self.mlkshk_api = self._get_mlkshk_api()
         print('Connected YAY!')
 
     def on_status(self, status):
@@ -68,7 +182,7 @@ class DMListener(tweepy.StreamListener):
         """ Auto follow back """
 
         # Exclude events that originate with us.
-        if event.source['id_str'] == str(3206731269):
+        if event.source['id_str'] == str(4012966701):
             return True
 
         try:
@@ -90,9 +204,11 @@ class DMListener(tweepy.StreamListener):
 
         # Check to see if TheGIFingBot is the sender. If so, pass & don't do
         # anything.
-        if sender == 3206731269:
+        print(sender)
+        if sender == 4012966701:
             return True
         dm = status._json
+        print(dm)
 
         # Check to make sure there's an attached tweet. The regex looks for
         # text along the lines of status/12437385203, which should be the
@@ -104,7 +220,7 @@ class DMListener(tweepy.StreamListener):
                 shared_id = match.groups()[0]
         except Exception as e:
             logger.debug("{0}: Key error. {1}".format(now(), e))
-            send_error_msg(sender_id=sender, msg=keys.MGS['unknown'])
+            self.send_error_msg(sender_id=sender, msg=keys.MGS['need_shared'])
             return True
 
         if shared_id:
@@ -121,10 +237,7 @@ class DMListener(tweepy.StreamListener):
 
         if not extended_entities:
             logger.debug("{0}: Could not find extended_entities".format(now()))
-            send_error_msg.apply_async(
-                args=[sender, keys.MGS['no_gif']],
-                queue='gifing_bot',
-                routing_key='gifing_bot')
+            self.send_error_msg(sender_id=sender, msg=keys.MGS['no_gif'])
             return True
         else:
             for media in extended_entities['media']:
@@ -142,30 +255,19 @@ class DMListener(tweepy.StreamListener):
                     gifs.append(video['url'])
 
         if not gifs:
-            send_error_msg.apply_async(
-                args=[sender, keys.MGS['no_gif']],
-                queue='gifing_bot',
-                routing_key='gifing_bot')
+            self.send_error_msg(sender_id=sender, msg=keys.MGS['no_gif'])
             return True
 
         # Yay, we're actually doing this!
         for gif in gifs:
             try:
-                send_success_gif.apply_async(
-                    args=[sender, gif],
-                    queue='gifing_bot',
-                    routing_key='gifing_bot')
+                self.send_success_gif(sender_id=sender, gif=gif)
             except Exception as e:
                 post_slack(msg=e)
-                send_error_msg.apply_async(
-                    args=[sender, keys.MGS['unknown']],
-                    queue='gifing_bot',
-                    routing_key='gifing_bot')
         return True
 
 
 def main():
-    post_slack(msg="Connected!")
     auth = tweepy.OAuthHandler(
         keys.CONSUMER_KEY,
         keys.CONSUMER_SECRET)
