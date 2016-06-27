@@ -40,9 +40,9 @@ class DMListener(tweepy.StreamListener):
     @staticmethod
     def _get_api():
         auth = tweepy.OAuthHandler(
-            keys.TEST_CONSUMER_KEY,
-            keys.TEST_CONSUMER_SECRET)
-        auth.set_access_token(keys.TEST_ACCESS_KEY, keys.TEST_ACCESS_SECRET)
+            keys.CONSUMER_KEY,
+            keys.CONSUMER_SECRET)
+        auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
         api = tweepy.API(auth, wait_on_rate_limit=True)
         return api
 
@@ -262,9 +262,9 @@ class DMListener(tweepy.StreamListener):
 
 def main():
     auth = tweepy.OAuthHandler(
-        keys.TEST_CONSUMER_KEY,
-        keys.TEST_CONSUMER_SECRET)
-    auth.set_access_token(keys.TEST_ACCESS_KEY, keys.TEST_ACCESS_SECRET)
+        keys.CONSUMER_KEY,
+        keys.CONSUMER_SECRET)
+    auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
 
     stream = tweepy.Stream(auth, DMListener())
     stream.userstream()
