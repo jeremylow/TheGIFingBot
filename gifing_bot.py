@@ -96,16 +96,8 @@ class DMListener(tweepy.StreamListener):
         subprocess.call(cmd, shell=True)
 
         gif_path = realpath(gif)
+        remove(mp4)
         return gif_path
-
-    @staticmethod
-    def delete_tmp_files_from_system(video, gif):
-        try:
-            remove(video)
-            remove(gif)
-        except:
-            post_slack('Files not deleted: video: {0}, gif: {1}'.format(video, gif))
-        return False
 
     def upload_gif(self, gif):
         """
