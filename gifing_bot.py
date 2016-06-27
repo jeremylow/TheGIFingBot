@@ -5,6 +5,7 @@ import logging.handlers
 from os import getpid, remove
 from os.path import abspath, basename, dirname, splitext, join, realpath
 import re
+import shutil
 import subprocess
 
 import requests
@@ -20,6 +21,7 @@ from utils import (
 
 with open('bot_supervisord.pid', 'w') as pidfile:
     pidfile.write(str(getpid()))
+
 
 BASE_DIR = dirname(abspath(__file__))
 LOGFILE = join(BASE_DIR, 'GifingBot.log')
@@ -38,9 +40,9 @@ class DMListener(tweepy.StreamListener):
     @staticmethod
     def _get_api():
         auth = tweepy.OAuthHandler(
-            keys.CONSUMER_KEY,
-            keys.CONSUMER_SECRET)
-        auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
+            keys.TEST_CONSUMER_KEY,
+            keys.TEST_CONSUMER_SECRET)
+        auth.set_access_token(keys.TEST_ACCESS_KEY, keys.TEST_ACCESS_SECRET)
         api = tweepy.API(auth, wait_on_rate_limit=True)
         return api
 
@@ -117,14 +119,9 @@ class DMListener(tweepy.StreamListener):
             importantly the link to the uploaded GIF.
 
         """
-        try:
-            uploaded_image = self.mlkshk_api.post_shared_file(image_file=gif)
-            gif_url = "{0}/p/{1}".format(
-                "https://mlkshk.com",
-                uploaded_image['share_key'])
-        except Exception as e:
-            post_slack("{0} Error: {1}".format(now(), e))
-        return gif_url
+        moved_gif = shutil.move(gif, keys.GIF_DIR)
+        gif_name = basename(moved_gif)
+        return "https://iseverythingstilltheworst.com/gifs/{0}".format(gif_name)
 
     def send_error_msg(self, sender_id=None, msg=None):
         """
@@ -133,7 +130,6 @@ class DMListener(tweepy.StreamListener):
                 the person that requested the GIF be made).
             msg (str): Direct Message to send back to the requestor explaining(ish)
                 what went wrong.
-
         Returns:
             True
 
@@ -149,7 +145,6 @@ class DMListener(tweepy.StreamListener):
                 (the person that requested the GIF be made).
             gif (str): URL of the MP4 to be converted to a GIF (this is slightly
                 backwards).
-
         Returns:
             True
 
@@ -162,9 +157,7 @@ class DMListener(tweepy.StreamListener):
         try:
             uploaded_image = self.upload_gif(gif_path)
             text = "I am good bot!! I made you a GIF: {0} !".format(uploaded_image)
-
             self.api.send_direct_message(user_id=sender_id, text=text)
-            self.delete_tmp_files_from_system(saved_video, gif_path)
 
         except Exception as e:
             post_slack(e)
@@ -219,7 +212,7 @@ class DMListener(tweepy.StreamListener):
             if match:
                 shared_id = match.groups()[0]
         except Exception as e:
-            logger.debug("{0}: Key error. {1}".format(now(), e))
+            logger.debug("{0}: Exception occurred: {1}".format(now(), e))
             self.send_error_msg(sender_id=sender, msg=keys.MGS['need_shared'])
             return True
 
@@ -269,9 +262,9 @@ class DMListener(tweepy.StreamListener):
 
 def main():
     auth = tweepy.OAuthHandler(
-        keys.CONSUMER_KEY,
-        keys.CONSUMER_SECRET)
-    auth.set_access_token(keys.ACCESS_KEY, keys.ACCESS_SECRET)
+        keys.TEST_CONSUMER_KEY,
+        keys.TEST_CONSUMER_SECRET)
+    auth.set_access_token(keys.TEST_ACCESS_KEY, keys.TEST_ACCESS_SECRET)
 
     stream = tweepy.Stream(auth, DMListener())
     stream.userstream()
