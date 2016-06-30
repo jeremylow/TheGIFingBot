@@ -100,19 +100,17 @@ class DMListener(tweepy.StreamListener):
         return gif_path
 
     def upload_gif(self, gif):
-        """
-        Upload the new gif to Imgur
+        """Move GIF over to hosting site path.
 
         Args:
             gif (str): path to the GIF file.
 
         Returns:
-            Response from Imgur, which will contain some information, most
-            importantly the link to the uploaded GIF.
+            URL of GIF..
 
         """
         moved_gif = shutil.move(gif, keys.GIF_DIR)
-        gif_name = basename(moved_gif)
+        gif_name, _ = splitext(basename(moved_gif))
         return "https://iseverythingstilltheworst.com/gifs/{0}".format(gif_name)
 
     def send_error_msg(self, sender_id=None, msg=None):
@@ -141,8 +139,6 @@ class DMListener(tweepy.StreamListener):
             True
 
         """
-        post_slack("Making a GIF!")
-
         saved_video = self.save_video(gif)
         gif_path = self.frames_to_gif(saved_video)
 
