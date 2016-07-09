@@ -26,3 +26,4 @@ bot_supervisord.pid
 bot_worker.pid
 *.mp4
 *.gif
+.python-version
