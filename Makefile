@@ -1,9 +1,8 @@
 help:
 	@echo "  info 	     show information on current sys config"
 	@echo "  clean       remove unwanted stuff"
-	@echo "  work        run server & gulp"
-	@echo "  migrate     make migrations and migrate all apps"
-	@echo "  shell       starts a django ipython shell"
+	@echo "  local       run gifing bot using non-production settings"
+	@echo "  prod        run gifing bot using production settings"
 
 
 local: export GBKEYS = test_keys
@@ -14,9 +13,6 @@ local:
 prod: export GBKEYS = prod_keys
 prod:
 	python gifing_bot.py
-
-shell:
-	cd ostrich; python manage.py shell -i ipython
 
 info:
 	python --version
