@@ -2,7 +2,7 @@
 
 palette="/tmp/palette.png"
 
-filters="scale=500:-1:flags=lanczos"
+filters=""
 
-ffmpeg -i "$1" -vf "$filters,palettegen" -y $palette
-ffmpeg -i "$1" -i $palette -lavfi "$filters [x]; [x][1:v] paletteuse" -y -r 14 $2
+ffmpeg -i "$1" -vf "palettegen" -y $palette
+ffmpeg -i "$1" -i $palette -lavfi "paletteuse" -y -r 8 $2
