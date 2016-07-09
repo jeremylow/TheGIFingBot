@@ -1,9 +1,21 @@
 import datetime
-from uuid import uuid4
+from random import choice
+
 import requests
 import json
 
 import keys
+
+
+GREEKS = []
+OCCUPATIONS = []
+
+for f in ['greek_gods', 'greek_monsters', 'greek_titans']:
+    with open('names/{0}.json'.format(f)) as fp:
+        GREEKS += json.load(fp)[f]
+
+with open('names/occupations.json') as f:
+    OCCUPATIONS = [occ.title().replace(' ', '') for occ in json.load(f)['occupations']]
 
 
 def post_slack(msg):
@@ -21,5 +33,6 @@ def now():
     return datetime.datetime.utcnow().isoformat()
 
 
-def random_string(n=15):
-    return uuid4().hex[:n]
+def random_string():
+    name = choice(GREEKS) + "The" + choice(OCCUPATIONS)
+    return name
