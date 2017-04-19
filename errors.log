@@ -1,0 +1,5 @@
+2017-04-18 21:40:21,021 - gifing_bot.bot - CRITICAL - 'str' object has no attribute 'sender'
+2017-04-18 21:42:34,159 - gifing_bot.bot - CRITICAL - 'str' object has no attribute 'sender'
+2017-04-18 21:43:44,148 - gifing_bot.bot - CRITICAL - 'str' object has no attribute 'sender'
+2017-04-18 21:44:04,219 - gifing_bot.bot - CRITICAL - 'str' object has no attribute 'sender'
+2017-04-18 21:44:41,755 - gifing_bot.bot - CRITICAL - 'str' object has no attribute 'sender'

@@ -1,0 +1,9 @@
+setup.cfg
+GifingBot.egg-info/PKG-INFO
+GifingBot.egg-info/SOURCES.txt
+GifingBot.egg-info/dependency_links.txt
+GifingBot.egg-info/top_level.txt
+gifing_bot/__init__.py
+gifing_bot/bot.py
+gifing_bot/keys.py
+gifing_bot/utils.py
