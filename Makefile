@@ -25,3 +25,6 @@ clean:
 	find . -name '*.pyc' -exec rm -f {} \;
 	find . -name '*.pyo' -exec rm -f {} \;
 	find . -name '*~' ! -name '*.un~' -exec rm -f {} \;
+
+test:
+	pytest
